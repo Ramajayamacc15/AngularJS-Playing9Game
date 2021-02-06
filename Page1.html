@@ -1,0 +1,207 @@
+<html>
+<head>
+<title>Playing9</title>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script> 
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/angular-utils-pagination@0.11.1/dirPagination.js"></script>
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.css"/>
+
+<style>
+
+table thead {
+  font-weight: bold;
+  font-size: 125%;
+}
+table, th , td  {
+  background: transparent;
+  border-collapse: collapse;
+  padding: 2px;  
+  border-bottom: 1px solid lightgray;
+  border-right: 1px solid white;
+}
+tr:hover {background-color: #d4faef;}
+th {
+	background-color:#98fada;
+}
+
+.arrow-down:after,.arrow-up:after{
+ content: ' ';
+ position: relative;
+ left: 2px;
+ border: 8px solid transparent;
+}
+.arrow-down:after{
+ top: 10px;
+ border-top-color: black;
+}
+
+.arrow-up:after{
+ bottom: 15px;
+ border-bottom-color: black;
+}
+
+.arrow-down,.arrow-up{
+ padding-right: 10px;
+}
+</style>
+<script >
+var app = angular.module("myApp", ['angularUtils.directives.dirPagination']);
+app.controller("myController", function($scope, $http, $window){
+	$scope.filterText = '';
+	$scope.orderByField = '';
+	$scope.reverseSort = false;
+	$scope.AllPlayers = [];
+	$scope.selectedPlayers = [];
+	
+	var storedSelectedPlayers = [];
+	var storedAllPlayers = [];
+	var fromPage2 = localStorage.getItem('IsFromPlaying9Page2');
+	if(fromPage2){
+		localStorage.removeItem("IsFromPlaying9Page2");
+		storedSelectedPlayers = JSON.parse(localStorage.getItem('SelectedPlayers'));
+		storedAllPlayers = JSON.parse(localStorage.getItem('AllPlayers'));
+	}
+
+	if(storedAllPlayers && storedAllPlayers.length > 0 ){
+		for(p in storedAllPlayers)
+			$scope.AllPlayers.push(storedAllPlayers[p]);
+		if(storedSelectedPlayers.length > 0 ){
+			for(p in storedSelectedPlayers){
+				for(x in $scope.AllPlayers)
+					if($scope.AllPlayers[x].Name == storedSelectedPlayers[p].Name){
+						$scope.AllPlayers[x].Level = storedSelectedPlayers[p].Level;
+						$scope.AllPlayers[x].Win = storedSelectedPlayers[p].Win;
+						$scope.AllPlayers[x].Loose = storedSelectedPlayers[p].Loose;
+						$scope.AllPlayers[x].NewPrice = storedSelectedPlayers[p].NewPrice;
+						$scope.selectedPlayers.push($scope.AllPlayers[x]);
+					}
+			}
+		}
+	}
+	else {
+		$http.get("https://s3-ap-southeast-1.amazonaws.com/he-public-data/bets7747a43.json")
+			.then(function (response) {
+				$scope.AllPlayers = response.data;
+				for (var i=0;i<$scope.AllPlayers.length;i++) {
+				  $scope.AllPlayers[i].Win = 0;
+				  $scope.AllPlayers[i].Loose = 0;
+				  $scope.AllPlayers[i].Level = 0;
+				  $scope.AllPlayers[i].Selected = false;
+				  $scope.AllPlayers[i].NewPrice = parseInt($scope.AllPlayers[i].Price, 10);			  
+				}
+				
+				$scope.AllPlayers[0].Selected = true;
+				$scope.selectedPlayers.push($scope.AllPlayers[0]);
+
+		}, function(errResponse){alert("Failed to load the data")});
+	}
+	$scope.sortClass = function(col){
+		if($scope.orderByField == col ){
+			if($scope.reverseSort){
+				return 'arrow-down'; 
+			}else{
+				return 'arrow-up';
+			}
+		}else{
+			return '';
+		}
+	}; 
+	
+	$scope.selectPlayer = function(player){
+		if(player.Selected){
+			if($scope.selectedPlayers.length > 8){
+				player.Selected = false;
+				alert('Loby is already full with 9 Players!');
+			}
+			else{
+				$scope.selectedPlayers.push(player);				
+			}
+		}
+		else{
+			var i = $scope.selectedPlayers.indexOf(player);
+			$scope.selectedPlayers.splice(i,1);
+		}
+	};
+	$scope.startPlayBtnClick = function(){
+		if($scope.selectedPlayers.length < 9)
+			alert('Please select 9 players');
+		else{
+			localStorage.setItem('AllPlayers', JSON.stringify($scope.AllPlayers));
+			localStorage.setItem('SelectedPlayers', JSON.stringify($scope.selectedPlayers));
+			$window.location.href = './page2.html';
+		}
+	};
+	$scope.backBtnClick = function(){
+		$localStorage.LocalMessage = $scope.selectedPlayers[0].Name;
+	}
+});
+</script>
+</head>
+
+<body ng-app="myApp" ng-controller="myController" style="background-image: url('page2 background.png');">
+<div id="page1" style="width: 100%;overflow:auto;">
+<div style="float:left;width:65%;">
+	<div style="position: fixed;left:0;right:0;height: 10%; top:0;background:#ceede7;">
+
+	</div>
+	<div style="position: fixed;left:0;right:0;height: 90%;bottom: 0;background:#ceede7;">
+		<div style="background-color:transparent;margin:5">
+			<span style="margin:20"><b>Playing 9</b></span>
+			<table style="border:0px solid transparent;">
+			<tr ng-repeat="p in selectedPlayers" style="border:0px solid transparent">
+				<td ><img ng-src="{{p['Profile Image']}}" style="padding:5px;display:block;margin-left:auto;margin-right:auto;width:50;height:50;"/> </td>
+				<td style="padding:5px;border:0px solid transparent;background-color:transparent;">
+					{{p.Name}}
+					<br/>
+					<span ><i class="fas fa-trophy" style="color:red;font-size:13"></i> {{p.Win}}&nbsp;&nbsp;&nbsp;&nbsp;<i class="fas fa-bullseye" style="color:red"></i> {{p.Bet}}</span>
+				</td>
+				<td style="padding:5px;border:0px solid transparent;text-align:center"><i class="fas fa-coins" style="color:orange"></i>{{p.NewPrice}}</td>
+			</tr>
+			</table>
+			<button ng-click="startPlayBtnClick()" style="position:absolute;bottom:6%;left:3%;width:13%;background:#1d40f0;color:white;font-size:16;">START</button>
+		</div>
+	</div>
+</div>
+<div style="float: right;width:35%;">
+	<div style="position: fixed; left:20%; right: 0;height: 20%;top: 0;background:#edfaf7">
+		<div style="position:fixed;left:23%">
+			<br/><h4>Select Playing 9</h4>
+			<br/><br/>
+			<input type="text" ng-model="filterText" placeholder="Search Players" style="width:150%;border-top:0;border-right:0;border-left:0;" />
+		</div>
+	</div>
+	<div style="position: fixed; left:20%; right: 0;height: 80%;bottom: 0;background:#edfaf7">
+		<table style="margin:5 15 15 25;width=100%;" >
+			<thead>
+				<th>SELECT</th>
+				<th style="width:40%" ng-click="orderByField='Name'; reverseSort = !reverseSort" ng-class='sortClass("Name")'>PLAYER NAME</th>
+				<th>LEVEL</th>
+				<th>AVATAR</th>
+				<th style="width:15%" ng-click="orderByField='Bet'; reverseSort = !reverseSort" ng-class='sortClass("Bet")'><i class="fas fa-bullseye" style="color:red"></i>BET</th>
+				<th style="width:7%" ><i class="fas fa-trophy" style="color:red;font-size:13"></i> WIN</th>
+				<th>LOST</th>
+				<th ng-click="orderByField='NewPrice'; reverseSort = !reverseSort" ng-class='sortClass("NewPrice")'><i class="fas fa-coins" style="color:orange"></i>PRICE</th>
+			</thead>
+		<tbody dir-paginate="player in AllPlayers|orderBy:orderByField:reverseSort|filter:{Name:filterText}:false|itemsPerPage:10">
+			<tr >
+				<td style="text-align: center;"><input type="checkbox" ng-click="selectPlayer(player)" ng-model="player.Selected"/></td>
+				<td>{{player.Name}}</td>
+				<td>{{player.Level}}</td>
+				<td><img ng-src="{{player['Profile Image']}}" width="30" height="30" style="display:block;margin-left:auto;margin-right:auto;"/></td>
+				<td>{{player.Bet}}</td>
+				<td>{{player.Win}}</td>
+				<td>{{player.Loose}}</td>
+				<td>{{player.NewPrice}}</td>
+				
+			</tr>
+			
+		</tbody>
+		</table>
+		<dir-pagination-controls />
+	</div>
+</div>
+</div>
+</body>
+
+</html>
